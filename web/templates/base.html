@@ -1,0 +1,25 @@
+{{define "base"}}<!doctype html>
+<html lang="en" class="bg-slate-950 text-slate-100">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{.Title}}</title>
+    <meta name="description" content="{{.Description}}">
+    <meta property="og:title" content="{{.Title}}">
+    <meta property="og:description" content="{{.Description}}">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://pelagicsociety.com{{.Path}}">
+    <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/static/css/app.css">
+    <script src="https://unpkg.com/htmx.org@2.0.2" defer></script>
+    <script src="https://unpkg.com/alpinejs@3.14.1/dist/cdn.min.js" defer></script>
+</head>
+<body class="min-h-screen flex flex-col antialiased">
+    {{template "nav" .}}
+    <main class="flex-1">
+        {{template "content" .}}
+    </main>
+    {{template "footer" .}}
+</body>
+</html>
+{{end}}

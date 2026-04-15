@@ -1,0 +1,32 @@
+[Unit]
+Description=Pelagic Society web server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pelagicsociety
+Group=pelagicsociety
+WorkingDirectory=/opt/pelagicsociety
+ExecStart=/opt/pelagicsociety/bin/pelagicsociety
+Restart=on-failure
+RestartSec=3
+Environment=PORT=8080
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictNamespaces=true
+RestrictRealtime=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target
