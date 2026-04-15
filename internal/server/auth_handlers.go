@@ -31,7 +31,7 @@ func (s *Server) handleLoginPage(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		writeFormResult(w, http.StatusBadRequest, "error", "Bad form submission.")
+		s.writeFormResult(w, http.StatusBadRequest, "error", "Bad form submission.")
 		return
 	}
 	email := strings.TrimSpace(r.FormValue("email"))
@@ -47,12 +47,12 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 			log.Printf("auth error: %v", err)
 		}
 		// Generic message — never reveal whether the email exists.
-		writeFormResult(w, http.StatusUnauthorized, "error", "Invalid email or password.")
+		s.writeFormResult(w, http.StatusUnauthorized, "error", "Invalid email or password.")
 		return
 	}
 	if err := s.auth.SetSessionCookie(w, user); err != nil {
 		log.Printf("auth cookie: %v", err)
-		writeFormResult(w, http.StatusInternalServerError, "error", "Login failed. Please try again.")
+		s.writeFormResult(w, http.StatusInternalServerError, "error", "Login failed. Please try again.")
 		return
 	}
 

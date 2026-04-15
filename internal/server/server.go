@@ -12,6 +12,7 @@ import (
 	"github.com/fhak/pelagicsociety/internal/auth"
 	"github.com/fhak/pelagicsociety/internal/content"
 	"github.com/fhak/pelagicsociety/internal/gallery"
+	"github.com/fhak/pelagicsociety/internal/icons"
 	"github.com/fhak/pelagicsociety/internal/mail"
 	"github.com/fhak/pelagicsociety/internal/media"
 	"github.com/fhak/pelagicsociety/web"
@@ -45,7 +46,7 @@ func New(cfg Config) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	fragments, err := template.ParseFS(web.Templates, "templates/fragments.html")
+	fragments, err := template.New("fragments").Funcs(tplFuncs()).ParseFS(web.Templates, "templates/fragments.html")
 	if err != nil {
 		return nil, fmt.Errorf("parse fragments: %w", err)
 	}
@@ -133,7 +134,7 @@ func parsePages() (map[string]*template.Template, error) {
 		if name == "base.html" || name == "partials.html" || name == "fragments.html" {
 			continue
 		}
-		t, err := template.ParseFS(web.Templates,
+		t, err := template.New(name).Funcs(tplFuncs()).ParseFS(web.Templates,
 			"templates/base.html",
 			"templates/partials.html",
 			"templates/fragments.html",
@@ -166,6 +167,13 @@ func (s *Server) renderFragment(w http.ResponseWriter, name string, data any) {
 	w.Header().Set("Cache-Control", "no-store")
 	if err := s.fragments.ExecuteTemplate(w, name, data); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+// tplFuncs builds the template FuncMap shared across every template set.
+func tplFuncs() template.FuncMap {
+	return template.FuncMap{
+		"icon": icons.Render,
 	}
 }
 

@@ -136,20 +136,24 @@ func validateEmail(s string) (string, error) {
 	return addr.Address, nil
 }
 
-// writeFormResult renders a small HTMX-friendly fragment.
-func writeFormResult(w http.ResponseWriter, status int, tone, msg string) {
+// writeFormResult renders a small HTMX-friendly fragment with an icon.
+func (s *Server) writeFormResult(w http.ResponseWriter, status int, tone, msg string) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(status)
-	cls := "text-emerald-400"
+	name := "form_ok"
 	if tone == "error" {
-		cls = "text-red-400"
+		name = "form_error"
 	}
-	fmt.Fprintf(w, `<p class="%s">%s</p>`, cls, msg)
+	if err := s.fragments.ExecuteTemplate(w, name, msg); err != nil {
+		// Fallback so we never send zero-byte on error.
+		fmt.Fprintf(w, "<p>%s</p>", msg)
+	}
 }
 
 func (s *Server) handleContactSubmit(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		writeFormResult(w, http.StatusBadRequest, "error", "Bad form submission.")
+		s.writeFormResult(w, http.StatusBadRequest, "error", "Bad form submission.")
 		return
 	}
 
@@ -163,11 +167,11 @@ func (s *Server) handleContactSubmit(w http.ResponseWriter, r *http.Request) {
 
 	email, err := validateEmail(emailRaw)
 	if err != nil || name == "" || message == "" {
-		writeFormResult(w, http.StatusBadRequest, "error", "Please fill out all fields with a valid email.")
+		s.writeFormResult(w, http.StatusBadRequest, "error", "Please fill out all fields with a valid email.")
 		return
 	}
 	if len(message) > 10000 || len(name) > 200 {
-		writeFormResult(w, http.StatusBadRequest, "error", "Message too long.")
+		s.writeFormResult(w, http.StatusBadRequest, "error", "Message too long.")
 		return
 	}
 
@@ -183,7 +187,7 @@ func (s *Server) handleContactSubmit(w http.ResponseWriter, r *http.Request) {
 	)
 	if dbErr != nil {
 		log.Printf("contact db insert: %v", dbErr)
-		writeFormResult(w, http.StatusInternalServerError, "error", "Something went wrong. Please try again.")
+		s.writeFormResult(w, http.StatusInternalServerError, "error", "Something went wrong. Please try again.")
 		return
 	}
 
@@ -205,18 +209,18 @@ func (s *Server) handleContactSubmit(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Printf("contact: kind=%q email=%q ip=%q", kind, email, ip)
-	writeFormResult(w, http.StatusOK, "ok", "Thanks — message received. We'll be in touch.")
+	s.writeFormResult(w, http.StatusOK, "ok", "Thanks — message received. We'll be in touch.")
 }
 
 func (s *Server) handleWaitlist(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		writeFormResult(w, http.StatusBadRequest, "error", "Bad submission.")
+		s.writeFormResult(w, http.StatusBadRequest, "error", "Bad submission.")
 		return
 	}
 
 	email, err := validateEmail(r.FormValue("email"))
 	if err != nil {
-		writeFormResult(w, http.StatusBadRequest, "error", "Enter a valid email.")
+		s.writeFormResult(w, http.StatusBadRequest, "error", "Enter a valid email.")
 		return
 	}
 
@@ -236,10 +240,10 @@ func (s *Server) handleWaitlist(w http.ResponseWriter, r *http.Request) {
 	)
 	if err != nil {
 		log.Printf("waitlist insert: %v", err)
-		writeFormResult(w, http.StatusInternalServerError, "error", "Something went wrong. Please try again.")
+		s.writeFormResult(w, http.StatusInternalServerError, "error", "Something went wrong. Please try again.")
 		return
 	}
 
 	log.Printf("waitlist: email=%q source=%q", email, source)
-	writeFormResult(w, http.StatusOK, "ok", "You're on the list.")
+	s.writeFormResult(w, http.StatusOK, "ok", "You're on the list.")
 }

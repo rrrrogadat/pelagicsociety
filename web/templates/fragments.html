@@ -5,35 +5,41 @@
     <div class="ps-block-content {{.Class}}">{{.HTML}}</div>
     {{if .IsAdmin}}
     <button type="button"
-            class="ps-edit-pencil absolute -top-2 -right-2 md:opacity-0 md:group-hover:opacity-100 focus:opacity-100 transition w-8 h-8 rounded-full bg-sky-500 text-slate-950 flex items-center justify-center shadow-lg"
+            class="ps-edit-pencil absolute -top-1 -right-1 md:opacity-0 md:group-hover:opacity-100 focus:opacity-100 transition-all w-7 h-7 rounded-md bg-slate-900/90 border border-slate-700 hover:border-sky-400 hover:text-sky-400 text-slate-400 flex items-center justify-center backdrop-blur-sm shadow-lg"
             hx-get="/admin/content/edit?key={{.Key}}&class={{.Class}}"
             hx-target="closest .ps-block"
             hx-swap="outerHTML"
-            aria-label="Edit">
-        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            aria-label="Edit {{.Key}}">
+        {{icon "pencil" "w-3.5 h-3.5"}}
     </button>
     {{end}}
 </div>
 {{end}}
 
 {{define "block_edit"}}
-<div class="ps-block relative" data-key="{{.Key}}">
+<div class="ps-block relative rounded-lg border border-sky-500/40 bg-sky-500/5 p-3" data-key="{{.Key}}">
     <form hx-post="/admin/content"
           hx-target="closest .ps-block"
           hx-swap="outerHTML"
-          class="space-y-2">
+          class="space-y-3">
         <input type="hidden" name="key" value="{{.Key}}">
         <input type="hidden" name="class" value="{{.Class}}">
         <textarea name="value" rows="6" autofocus
-                  class="w-full px-3 py-2 rounded bg-slate-900 border border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-400 text-slate-100 font-mono text-sm">{{.Raw}}</textarea>
+                  class="w-full px-3 py-2 rounded bg-slate-950 border border-slate-700 focus:outline-none focus:border-sky-400 focus:ring-1 focus:ring-sky-400 text-slate-100 font-mono text-sm resize-y">{{.Raw}}</textarea>
         <div class="flex items-center gap-2 text-xs">
-            <button type="submit" class="px-3 py-1.5 rounded bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold">Save</button>
+            <button type="submit" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold transition">
+                {{icon "check" "w-3.5 h-3.5"}}
+                Save
+            </button>
             <button type="button"
                     hx-get="/content/view?key={{.Key}}&class={{.Class}}"
                     hx-target="closest .ps-block"
                     hx-swap="outerHTML"
-                    class="px-3 py-1.5 rounded border border-slate-700 hover:border-slate-500">Cancel</button>
-            <span class="text-slate-500">Markdown supported.</span>
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded border border-slate-700 hover:border-slate-500 transition">
+                {{icon "x" "w-3.5 h-3.5"}}
+                Cancel
+            </button>
+            <span class="text-slate-500 ml-auto">Markdown supported</span>
         </div>
     </form>
 </div>
@@ -50,19 +56,23 @@
         {{end}}
     </div>
     {{else}}
-    <div class="rounded-lg border border-slate-800 p-10 text-center text-slate-500">
-        No items yet.{{if .CanEdit}} Upload a photo or add a YouTube video above.{{end}}
+    <div class="rounded-xl border border-slate-800 bg-slate-900/40 p-12 text-center">
+        <div class="inline-flex w-12 h-12 items-center justify-center rounded-full bg-slate-800/60 text-slate-500">
+            {{icon "image" "w-6 h-6"}}
+        </div>
+        <p class="mt-4 text-slate-400">No items yet.</p>
+        {{if .CanEdit}}<p class="mt-1 text-xs text-slate-600">Upload a photo or add a YouTube video above.</p>{{end}}
     </div>
     {{end}}
 </div>
 {{end}}
 
 {{define "gallery_item"}}
-<div class="relative group rounded-lg overflow-hidden border border-slate-800 bg-slate-900">
+<div class="relative group rounded-xl overflow-hidden border border-slate-800 bg-slate-900">
     {{if eq .Kind "photo"}}
         <a href="{{.FullURL}}" target="_blank" rel="noopener" class="block">
             <img src="{{.ThumbURL}}" alt="{{.Caption}}" loading="lazy"
-                 class="w-full aspect-square object-cover">
+                 class="w-full aspect-square object-cover transition group-hover:scale-[1.02]">
         </a>
     {{else if eq .Kind "video"}}
         <div class="aspect-video bg-black">
@@ -80,32 +90,54 @@
     {{end}}
 
     {{if .IsAdmin}}
-    <div class="absolute top-2 right-2 flex gap-1 md:opacity-0 md:group-hover:opacity-100 transition">
+    <div class="absolute top-2 right-2 flex gap-1 md:opacity-0 md:group-hover:opacity-100 focus-within:opacity-100 transition">
         {{if .CanMoveUp}}
         <form hx-post="/admin/gallery/{{.ID}}/move" hx-target="#gallery-grid" hx-swap="outerHTML">
             <input type="hidden" name="direction" value="up">
-            <button type="submit" class="w-7 h-7 rounded bg-slate-900/90 hover:bg-slate-800 text-slate-200 text-xs" title="Move up" aria-label="Move up">↑</button>
+            <button type="submit" class="w-8 h-8 rounded-md bg-slate-900/90 hover:bg-slate-800 border border-slate-700 hover:border-slate-500 text-slate-200 flex items-center justify-center backdrop-blur-sm transition" title="Move up" aria-label="Move up">
+                {{icon "arrow-up" "w-4 h-4"}}
+            </button>
         </form>
         {{end}}
         {{if .CanMoveDown}}
         <form hx-post="/admin/gallery/{{.ID}}/move" hx-target="#gallery-grid" hx-swap="outerHTML">
             <input type="hidden" name="direction" value="down">
-            <button type="submit" class="w-7 h-7 rounded bg-slate-900/90 hover:bg-slate-800 text-slate-200 text-xs" title="Move down" aria-label="Move down">↓</button>
+            <button type="submit" class="w-8 h-8 rounded-md bg-slate-900/90 hover:bg-slate-800 border border-slate-700 hover:border-slate-500 text-slate-200 flex items-center justify-center backdrop-blur-sm transition" title="Move down" aria-label="Move down">
+                {{icon "arrow-down" "w-4 h-4"}}
+            </button>
         </form>
         {{end}}
         <form hx-post="/admin/gallery/{{.ID}}/delete" hx-target="#gallery-grid" hx-swap="outerHTML"
               hx-confirm="Delete this item?">
-            <button type="submit" class="w-7 h-7 rounded bg-red-500/90 hover:bg-red-500 text-white text-xs" title="Delete" aria-label="Delete">✕</button>
+            <button type="submit" class="w-8 h-8 rounded-md bg-red-500/90 hover:bg-red-500 border border-red-500 text-white flex items-center justify-center backdrop-blur-sm transition" title="Delete" aria-label="Delete">
+                {{icon "trash" "w-4 h-4"}}
+            </button>
         </form>
     </div>
 
     <form hx-post="/admin/gallery/{{.ID}}/caption" hx-target="#caption-msg-{{.ID}}" hx-swap="innerHTML"
           class="px-3 pb-3 pt-1 flex gap-2 text-xs">
         <input type="text" name="caption" value="{{.Caption}}" placeholder="Caption"
-               class="flex-1 px-2 py-1 rounded bg-slate-950 border border-slate-800 focus:outline-none focus:border-sky-500">
-        <button type="submit" class="px-2 py-1 rounded bg-sky-500 hover:bg-sky-400 text-slate-950">Save</button>
+               class="flex-1 px-2.5 py-1.5 rounded bg-slate-950 border border-slate-800 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition">
+        <button type="submit" class="px-2.5 py-1.5 rounded bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold transition">Save</button>
     </form>
     <div id="caption-msg-{{.ID}}" class="px-3 pb-2 text-xs"></div>
     {{end}}
 </div>
+{{end}}
+
+{{/* -------- generic form result fragments -------- */}}
+
+{{define "form_ok"}}
+<p class="inline-flex items-center gap-1.5 text-emerald-400">
+    {{icon "check-circle" "w-4 h-4"}}
+    <span>{{.}}</span>
+</p>
+{{end}}
+
+{{define "form_error"}}
+<p class="inline-flex items-center gap-1.5 text-red-400">
+    {{icon "alert-circle" "w-4 h-4"}}
+    <span>{{.}}</span>
+</p>
 {{end}}

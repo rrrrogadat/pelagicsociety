@@ -17,16 +17,16 @@ func (s *Server) handleGalleryUpload(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFrom(r.Context())
 
 	if !s.media.Enabled() {
-		writeFormResult(w, http.StatusServiceUnavailable, "error", "Media storage not configured.")
+		s.writeFormResult(w, http.StatusServiceUnavailable, "error", "Media storage not configured.")
 		return
 	}
 	if err := r.ParseMultipartForm(maxMultipartMemory); err != nil {
-		writeFormResult(w, http.StatusBadRequest, "error", "Bad upload.")
+		s.writeFormResult(w, http.StatusBadRequest, "error", "Bad upload.")
 		return
 	}
 	file, fh, err := r.FormFile("photo")
 	if err != nil {
-		writeFormResult(w, http.StatusBadRequest, "error", "No file provided.")
+		s.writeFormResult(w, http.StatusBadRequest, "error", "No file provided.")
 		return
 	}
 	defer file.Close()
@@ -35,7 +35,7 @@ func (s *Server) handleGalleryUpload(w http.ResponseWriter, r *http.Request) {
 	uploaded, err := s.media.UploadPhoto(r.Context(), file, fh.Filename, mime)
 	if err != nil {
 		log.Printf("gallery upload: %v", err)
-		writeFormResult(w, http.StatusBadRequest, "error", "Couldn't upload: "+err.Error())
+		s.writeFormResult(w, http.StatusBadRequest, "error", "Couldn't upload: "+err.Error())
 		return
 	}
 	caption := strings.TrimSpace(r.FormValue("caption"))
@@ -44,7 +44,7 @@ func (s *Server) handleGalleryUpload(w http.ResponseWriter, r *http.Request) {
 		_ = s.media.Delete(r.Context(), uploaded.Key)
 		_ = s.media.Delete(r.Context(), uploaded.ThumbKey)
 		log.Printf("gallery insert: %v", err)
-		writeFormResult(w, http.StatusInternalServerError, "error", "Couldn't save item.")
+		s.writeFormResult(w, http.StatusInternalServerError, "error", "Couldn't save item.")
 		return
 	}
 	// Return refreshed gallery grid for HTMX out-of-band update.
@@ -54,19 +54,19 @@ func (s *Server) handleGalleryUpload(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleGalleryAddVideo(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFrom(r.Context())
 	if err := r.ParseForm(); err != nil {
-		writeFormResult(w, http.StatusBadRequest, "error", "Bad form.")
+		s.writeFormResult(w, http.StatusBadRequest, "error", "Bad form.")
 		return
 	}
 	urlRaw := r.FormValue("url")
 	id := gallery.ParseYouTubeID(urlRaw)
 	if id == "" {
-		writeFormResult(w, http.StatusBadRequest, "error", "Unrecognized YouTube URL.")
+		s.writeFormResult(w, http.StatusBadRequest, "error", "Unrecognized YouTube URL.")
 		return
 	}
 	caption := strings.TrimSpace(r.FormValue("caption"))
 	if _, err := s.gallery.AddVideo(r.Context(), id, caption, u.ID); err != nil {
 		log.Printf("gallery video: %v", err)
-		writeFormResult(w, http.StatusInternalServerError, "error", "Couldn't save video.")
+		s.writeFormResult(w, http.StatusInternalServerError, "error", "Couldn't save video.")
 		return
 	}
 	s.renderGalleryGrid(w, r)
@@ -130,16 +130,16 @@ func (s *Server) handleGalleryCaption(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		writeFormResult(w, http.StatusBadRequest, "error", "Bad form.")
+		s.writeFormResult(w, http.StatusBadRequest, "error", "Bad form.")
 		return
 	}
 	caption := strings.TrimSpace(r.FormValue("caption"))
 	if err := s.gallery.UpdateCaption(r.Context(), id, caption); err != nil {
 		log.Printf("caption save: %v", err)
-		writeFormResult(w, http.StatusInternalServerError, "error", "Couldn't save.")
+		s.writeFormResult(w, http.StatusInternalServerError, "error", "Couldn't save.")
 		return
 	}
-	writeFormResult(w, http.StatusOK, "ok", "Saved.")
+	s.writeFormResult(w, http.StatusOK, "ok", "Saved.")
 }
 
 // renderGalleryGrid rebuilds the entire grid + emits the fragment response.
