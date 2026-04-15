@@ -13,8 +13,11 @@ import (
 	"time"
 
 	"github.com/fhak/pelagicsociety/internal/auth"
+	"github.com/fhak/pelagicsociety/internal/content"
 	"github.com/fhak/pelagicsociety/internal/db"
+	"github.com/fhak/pelagicsociety/internal/gallery"
 	"github.com/fhak/pelagicsociety/internal/mail"
+	"github.com/fhak/pelagicsociety/internal/media"
 	"github.com/fhak/pelagicsociety/internal/server"
 	"golang.org/x/term"
 )
@@ -79,10 +82,20 @@ func runServer() error {
 		envOr("MAIL_REPLY_TO", ""),
 	)
 
+	contentSvc := content.New(sqlDB)
+	galleryRepo := gallery.NewRepo(sqlDB)
+	mediaStore := media.New(context.Background(),
+		os.Getenv("MEDIA_BUCKET"),
+		os.Getenv("MEDIA_CDN_URL"),
+	)
+
 	srv, err := server.New(server.Config{
 		DB:            sqlDB,
 		Mailer:        mailer,
 		Auth:          authSvc,
+		Content:       contentSvc,
+		Gallery:       galleryRepo,
+		Media:         mediaStore,
 		ContactToAddr: envOr("CONTACT_TO", ""),
 	})
 	if err != nil {

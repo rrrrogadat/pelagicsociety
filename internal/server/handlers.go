@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/fhak/pelagicsociety/internal/auth"
+	"github.com/fhak/pelagicsociety/internal/content"
 	mailer "github.com/fhak/pelagicsociety/internal/mail"
 )
 
@@ -39,11 +40,83 @@ func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleAbout(w http.ResponseWriter, r *http.Request) {
-	s.render(w, "about.html", s.pageFor(r, "About — Pelagic Society", "/about"))
+	p := s.pageFor(r, "About — Pelagic Society", "/about")
+	s.render(w, "about.html", aboutPageData{
+		pageData: p,
+		Heading:  s.blockView(r.Context(), "about.heading", "About", "text-5xl font-bold tracking-tight", p.User),
+		Body:     s.blockView(r.Context(), "about.body", "Pelagic Society is a chronicle of life spent in and under the open ocean — spearfishing, freediving, and the people and places that shape it.", "prose prose-invert max-w-none text-lg text-slate-300 leading-relaxed", p.User),
+	})
 }
 
 func (s *Server) handleGallery(w http.ResponseWriter, r *http.Request) {
-	s.render(w, "gallery.html", s.pageFor(r, "Gallery — Pelagic Society", "/gallery"))
+	p := s.pageFor(r, "Gallery — Pelagic Society", "/gallery")
+	items, _ := s.gallery.List(r.Context())
+	views := make([]galleryItemView, 0, len(items))
+	for i, it := range items {
+		v := galleryItemView{
+			ID:          it.ID,
+			Kind:        string(it.Kind),
+			Caption:     it.Caption,
+			CanMoveUp:   i > 0,
+			CanMoveDown: i < len(items)-1,
+			IsAdmin:     p.User.IsAdmin(),
+		}
+		switch it.Kind {
+		case "photo":
+			v.ThumbURL = s.media.URL(it.S3KeyThumb)
+			v.FullURL = s.media.URL(it.S3Key)
+			v.Width = it.Width
+			v.Height = it.Height
+		case "video":
+			v.YouTubeID = it.YouTubeID
+		}
+		views = append(views, v)
+	}
+	s.render(w, "gallery.html", galleryPageData{
+		pageData: p,
+		Heading:  s.blockView(r.Context(), "gallery.heading", "Gallery", "text-5xl font-bold tracking-tight", p.User),
+		Intro:    s.blockView(r.Context(), "gallery.intro", "A selection of favorite frames from the water.", "mt-4 text-slate-400", p.User),
+		Items:    views,
+		CanEdit:  p.User.IsAdmin(),
+	})
+}
+
+type aboutPageData struct {
+	pageData
+	Heading *content.BlockView
+	Body    *content.BlockView
+}
+
+type galleryPageData struct {
+	pageData
+	Heading *content.BlockView
+	Intro   *content.BlockView
+	Items   []galleryItemView
+	CanEdit bool
+}
+
+type galleryItemView struct {
+	ID          int64
+	Kind        string
+	Caption     string
+	ThumbURL    string
+	FullURL     string
+	YouTubeID   string
+	Width       int
+	Height      int
+	CanMoveUp   bool
+	CanMoveDown bool
+	IsAdmin     bool
+}
+
+func (s *Server) blockView(ctx context.Context, key, fallback, class string, u *auth.User) *content.BlockView {
+	return &content.BlockView{
+		Key:     key,
+		HTML:    s.content.Render(ctx, key, fallback),
+		Raw:     s.content.Raw(ctx, key, fallback),
+		Class:   class,
+		IsAdmin: u.IsAdmin(),
+	}
 }
 
 func (s *Server) handleShop(w http.ResponseWriter, r *http.Request) {
