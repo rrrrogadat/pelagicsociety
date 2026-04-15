@@ -74,12 +74,26 @@ MAIL_REPLY_TO=
 CONTACT_TO=
 # AWS_ACCESS_KEY_ID=
 # AWS_SECRET_ACCESS_KEY=
+
+# JWT secret (auto-generated below if missing)
+JWT_SECRET=
 EOF
     sudo chown root:pelagicsociety /etc/pelagicsociety/env
     sudo chmod 640 /etc/pelagicsociety/env
-    echo "✓ /etc/pelagicsociety/env created (edit to add RESEND_API_KEY + CONTACT_TO)"
+    echo "✓ /etc/pelagicsociety/env created"
 else
     echo "✓ /etc/pelagicsociety/env already present"
+fi
+
+# Generate JWT_SECRET if it's missing or empty — never overwrite existing.
+if ! sudo grep -qE '^JWT_SECRET=.+' /etc/pelagicsociety/env 2>/dev/null; then
+    JWT=\$(openssl rand -hex 32)
+    # Remove blank/empty line if present, then append.
+    sudo sed -i '/^JWT_SECRET=\$/d' /etc/pelagicsociety/env
+    echo "JWT_SECRET=\$JWT" | sudo tee -a /etc/pelagicsociety/env > /dev/null
+    echo "✓ JWT_SECRET generated"
+else
+    echo "✓ JWT_SECRET already present"
 fi
 
 # --- firewall (if ufw active) ---

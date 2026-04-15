@@ -9,6 +9,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/fhak/pelagicsociety/internal/auth"
 	"github.com/fhak/pelagicsociety/internal/mail"
 	"github.com/fhak/pelagicsociety/web"
 )
@@ -16,6 +17,7 @@ import (
 type Config struct {
 	DB            *sql.DB
 	Mailer        *mail.Mailer
+	Auth          *auth.Auth
 	ContactToAddr string // where contact form submissions are delivered
 }
 
@@ -24,6 +26,7 @@ type Server struct {
 	pages  map[string]*template.Template
 	db     *sql.DB
 	mailer *mail.Mailer
+	auth   *auth.Auth
 	cfg    Config
 }
 
@@ -38,6 +41,7 @@ func New(cfg Config) (*Server, error) {
 		pages:  pages,
 		db:     cfg.DB,
 		mailer: cfg.Mailer,
+		auth:   cfg.Auth,
 		cfg:    cfg,
 	}
 	s.routes()
@@ -52,6 +56,7 @@ func (s *Server) routes() {
 	staticFS, _ := fs.Sub(web.Static, "static")
 	s.mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticFS))))
 
+	// Public pages
 	s.mux.HandleFunc("GET /{$}", s.handleHome)
 	s.mux.HandleFunc("GET /about", s.handleAbout)
 	s.mux.HandleFunc("GET /gallery", s.handleGallery)
@@ -59,6 +64,17 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /contact", s.handleContact)
 	s.mux.HandleFunc("POST /contact", s.handleContactSubmit)
 	s.mux.HandleFunc("POST /waitlist", s.handleWaitlist)
+
+	// Auth
+	s.mux.HandleFunc("GET /login", s.handleLoginPage)
+	s.mux.HandleFunc("POST /login", s.handleLogin)
+	s.mux.HandleFunc("POST /logout", s.handleLogout)
+
+	// Admin — gated by admin role
+	adminOnly := s.auth.RequireRole(auth.RoleAdmin)
+	s.mux.Handle("GET /admin", adminOnly(http.HandlerFunc(s.handleAdminHome)))
+	s.mux.Handle("GET /admin/", adminOnly(http.HandlerFunc(s.handleAdminHome)))
+
 	s.mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("ok"))
 	})

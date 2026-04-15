@@ -1,0 +1,60 @@
+{{define "content"}}
+<section class="max-w-6xl mx-auto px-6 py-12">
+    <div class="flex items-center justify-between">
+        <div>
+            <p class="uppercase tracking-[0.3em] text-sky-400 text-xs">Admin</p>
+            <h1 class="mt-2 text-3xl font-bold tracking-tight">Dashboard</h1>
+            <p class="mt-1 text-sm text-slate-400">Signed in as {{.User.Email}}</p>
+        </div>
+        <form hx-post="/logout" hx-swap="none">
+            <button type="submit" class="px-4 py-2 rounded border border-slate-700 hover:border-sky-400 text-sm">Sign out</button>
+        </form>
+    </div>
+
+    <div class="mt-10 grid grid-cols-2 gap-4 max-w-md">
+        <div class="rounded-lg border border-slate-800 p-5">
+            <div class="text-xs uppercase tracking-widest text-slate-400">Waitlist</div>
+            <div class="mt-1 text-3xl font-bold">{{.WaitlistCount}}</div>
+        </div>
+        <div class="rounded-lg border border-slate-800 p-5">
+            <div class="text-xs uppercase tracking-widest text-slate-400">Contact messages</div>
+            <div class="mt-1 text-3xl font-bold">{{.ContactCount}}</div>
+        </div>
+    </div>
+
+    <div class="mt-12 grid md:grid-cols-2 gap-8">
+        <div>
+            <h2 class="text-sm uppercase tracking-widest text-slate-400">Recent contacts</h2>
+            <ul class="mt-3 divide-y divide-slate-800 text-sm">
+                {{range .RecentContacts}}
+                <li class="py-2">
+                    <div class="flex justify-between">
+                        <span class="font-medium">{{.Name}}</span>
+                        <span class="text-slate-500">{{.Kind}}</span>
+                    </div>
+                    <div class="text-slate-400">{{.Email}}</div>
+                    <div class="text-xs text-slate-500">{{.CreatedAt.Format "2006-01-02 15:04"}}</div>
+                </li>
+                {{else}}
+                <li class="py-4 text-slate-500">No messages yet.</li>
+                {{end}}
+            </ul>
+        </div>
+        <div>
+            <h2 class="text-sm uppercase tracking-widest text-slate-400">Recent waitlist signups</h2>
+            <ul class="mt-3 divide-y divide-slate-800 text-sm">
+                {{range .RecentWaitlist}}
+                <li class="py-2 flex justify-between">
+                    <span>{{.Email}}</span>
+                    <span class="text-xs text-slate-500">{{.CreatedAt.Format "2006-01-02"}}</span>
+                </li>
+                {{else}}
+                <li class="py-4 text-slate-500">No signups yet.</li>
+                {{end}}
+            </ul>
+        </div>
+    </div>
+
+    <p class="mt-16 text-xs text-slate-600">More admin features coming.</p>
+</section>
+{{end}}
