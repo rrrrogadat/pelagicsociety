@@ -69,7 +69,7 @@ if [ ! -f "/etc/letsencrypt/live/\$DOMAIN/fullchain.pem" ]; then
     sudo tee /etc/nginx/sites-available/pelagic-bootstrap > /dev/null <<EOF
 server {
     listen 80 default_server;
-    server_name \$DOMAIN www.\$DOMAIN;
+    server_name \$DOMAIN;
     location /.well-known/acme-challenge/ { root /var/www/certbot; }
     location / { return 200 'bootstrap'; add_header Content-Type text/plain; }
 }
@@ -78,8 +78,14 @@ EOF
     sudo rm -f /etc/nginx/sites-enabled/default
     sudo nginx -t && sudo systemctl reload nginx
 
+    # Only apex domain — www has no DNS record yet. Re-run bootstrap after
+    # adding a www A-record to expand the cert.
+    CERT_DOMAINS="-d \$DOMAIN"
+    if host "www.\$DOMAIN" >/dev/null 2>&1; then
+        CERT_DOMAINS="\$CERT_DOMAINS -d www.\$DOMAIN"
+    fi
     sudo certbot certonly --webroot -w /var/www/certbot \
-        -d "\$DOMAIN" -d "www.\$DOMAIN" \
+        \$CERT_DOMAINS \
         --non-interactive --agree-tos -m "\$ADMIN_EMAIL"
 
     sudo rm -f /etc/nginx/sites-enabled/pelagic-bootstrap
