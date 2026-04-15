@@ -1,6 +1,7 @@
 package server
 
 import (
+	"database/sql"
 	"fmt"
 	"html/template"
 	"io/fs"
@@ -8,23 +9,36 @@ import (
 	"path"
 	"strings"
 
+	"github.com/fhak/pelagicsociety/internal/mail"
 	"github.com/fhak/pelagicsociety/web"
 )
 
-type Server struct {
-	mux   *http.ServeMux
-	pages map[string]*template.Template
+type Config struct {
+	DB            *sql.DB
+	Mailer        *mail.Mailer
+	ContactToAddr string // where contact form submissions are delivered
 }
 
-func New() (*Server, error) {
+type Server struct {
+	mux    *http.ServeMux
+	pages  map[string]*template.Template
+	db     *sql.DB
+	mailer *mail.Mailer
+	cfg    Config
+}
+
+func New(cfg Config) (*Server, error) {
 	pages, err := parsePages()
 	if err != nil {
 		return nil, err
 	}
 
 	s := &Server{
-		mux:   http.NewServeMux(),
-		pages: pages,
+		mux:    http.NewServeMux(),
+		pages:  pages,
+		db:     cfg.DB,
+		mailer: cfg.Mailer,
+		cfg:    cfg,
 	}
 	s.routes()
 	return s, nil
@@ -50,9 +64,6 @@ func (s *Server) routes() {
 	})
 }
 
-// parsePages builds one template set per page, each composed with base.html +
-// partials.html. This avoids the flat-namespace collision of {{define "content"}}
-// blocks across multiple page files.
 func parsePages() (map[string]*template.Template, error) {
 	entries, err := fs.ReadDir(web.Templates, "templates")
 	if err != nil {
@@ -90,4 +101,21 @@ func (s *Server) render(w http.ResponseWriter, name string, data any) {
 	if err := t.ExecuteTemplate(w, "base", data); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+}
+
+// clientIP pulls the best-guess source IP, preferring X-Forwarded-For from nginx.
+func clientIP(r *http.Request) string {
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		if i := strings.Index(xff, ","); i > 0 {
+			return strings.TrimSpace(xff[:i])
+		}
+		return strings.TrimSpace(xff)
+	}
+	if ra := r.RemoteAddr; ra != "" {
+		if i := strings.LastIndex(ra, ":"); i > 0 {
+			return ra[:i]
+		}
+		return ra
+	}
+	return ""
 }

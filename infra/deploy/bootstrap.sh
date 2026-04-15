@@ -52,11 +52,35 @@ if ! id pelagicsociety &>/dev/null; then
 fi
 
 # --- directories ---
-sudo mkdir -p "\$DEPLOY_PATH/bin" "\$DEPLOY_PATH/.deploy-cache"
+sudo mkdir -p "\$DEPLOY_PATH/bin" "\$DEPLOY_PATH/.deploy-cache" "\$DEPLOY_PATH/data"
 sudo chown -R pelagicsociety:pelagicsociety "\$DEPLOY_PATH"
+sudo chmod 750 "\$DEPLOY_PATH/data"
 sudo mkdir -p /var/www/pelagicsociety/maintenance
 sudo mkdir -p /var/www/certbot
 sudo chown -R www-data:www-data /var/www/pelagicsociety /var/www/certbot
+
+# --- env file for secrets (Resend, etc.) ---
+sudo mkdir -p /etc/pelagicsociety
+if [ ! -f /etc/pelagicsociety/env ]; then
+    sudo tee /etc/pelagicsociety/env > /dev/null <<'EOF'
+# Pelagic Society runtime config. Loaded by systemd via EnvironmentFile=.
+# Mail is sent via AWS SESv2. Credentials resolve in this order:
+#   1. IAM instance role (preferred; leave AWS_* vars unset)
+#   2. AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY below
+# If neither works, the app runs in log-only mode (no email sent).
+AWS_REGION=us-east-2
+MAIL_FROM=Pelagic Society <no-reply@pelagicsociety.com>
+MAIL_REPLY_TO=
+CONTACT_TO=
+# AWS_ACCESS_KEY_ID=
+# AWS_SECRET_ACCESS_KEY=
+EOF
+    sudo chown root:pelagicsociety /etc/pelagicsociety/env
+    sudo chmod 640 /etc/pelagicsociety/env
+    echo "✓ /etc/pelagicsociety/env created (edit to add RESEND_API_KEY + CONTACT_TO)"
+else
+    echo "✓ /etc/pelagicsociety/env already present"
+fi
 
 # --- firewall (if ufw active) ---
 if sudo ufw status 2>/dev/null | grep -q "Status: active"; then

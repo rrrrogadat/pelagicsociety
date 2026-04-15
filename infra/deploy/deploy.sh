@@ -128,6 +128,19 @@ ssh -i "$SSH_KEY" -o ControlPath="$SSH_CONTROL" "$SERVER" bash <<REMOTE
 set -euo pipefail
 DEPLOY_PATH="$DEPLOY_PATH"
 
+# --- ensure data dir exists (for pre-existing installs) ---
+sudo mkdir -p "\$DEPLOY_PATH/data"
+sudo chown pelagicsociety:pelagicsociety "\$DEPLOY_PATH/data"
+sudo chmod 750 "\$DEPLOY_PATH/data"
+
+# --- ensure env file exists so EnvironmentFile=- is happy even if empty ---
+sudo mkdir -p /etc/pelagicsociety
+if [ ! -f /etc/pelagicsociety/env ]; then
+    sudo touch /etc/pelagicsociety/env
+    sudo chown root:pelagicsociety /etc/pelagicsociety/env
+    sudo chmod 640 /etc/pelagicsociety/env
+fi
+
 # --- maintenance mode on ---
 sudo mkdir -p /var/www/pelagicsociety/maintenance
 sudo cp "\$DEPLOY_PATH/.deploy-cache/web/maintenance.html" /var/www/pelagicsociety/maintenance/index.html

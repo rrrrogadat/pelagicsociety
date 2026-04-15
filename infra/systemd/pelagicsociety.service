@@ -12,6 +12,8 @@ ExecStart=/opt/pelagicsociety/bin/pelagicsociety
 Restart=on-failure
 RestartSec=3
 Environment=PORT=8080
+Environment=DB_PATH=/opt/pelagicsociety/data/pelagicsociety.db
+EnvironmentFile=-/etc/pelagicsociety/env
 
 # Hardening
 NoNewPrivileges=true
@@ -27,6 +29,9 @@ RestrictRealtime=true
 LockPersonality=true
 MemoryDenyWriteExecute=true
 SystemCallArchitectures=native
+
+# Allow writes to the SQLite data directory only
+ReadWritePaths=/opt/pelagicsociety/data
 
 [Install]
 WantedBy=multi-user.target
