@@ -44,6 +44,16 @@ type BlockView struct {
 	IsAdmin bool
 }
 
+// LinkBlockView is an editable (label, url) pair. Persisted as two content
+// rows with suffixes ".label" and ".url" under a shared base key.
+type LinkBlockView struct {
+	Key     string // base key, e.g. "hero.cta_primary"
+	Label   string
+	URL     string
+	Class   string // applied to the rendered <a>
+	IsAdmin bool
+}
+
 func New(db *sql.DB) *Service {
 	md := goldmark.New(
 		goldmark.WithExtensions(extension.Linkify, extension.Strikethrough),
@@ -83,6 +93,24 @@ func (s *Service) Render(ctx context.Context, key, fallback string) template.HTM
 	}
 	s.putCache(key, raw, template.HTML(buf.String()))
 	return template.HTML(buf.String())
+}
+
+// Link reads a link-block (label + url) by its base key. Missing rows fall
+// back to the supplied defaults.
+func (s *Service) Link(ctx context.Context, baseKey, fallbackLabel, fallbackURL string) LinkBlockView {
+	return LinkBlockView{
+		Key:   baseKey,
+		Label: s.Raw(ctx, baseKey+".label", fallbackLabel),
+		URL:   s.Raw(ctx, baseKey+".url", fallbackURL),
+	}
+}
+
+// SetLink persists both components of a link-block in a single call.
+func (s *Service) SetLink(ctx context.Context, baseKey, label, url string, userID int64) error {
+	if err := s.Set(ctx, baseKey+".label", label, userID); err != nil {
+		return err
+	}
+	return s.Set(ctx, baseKey+".url", url, userID)
 }
 
 // Set upserts a block and invalidates the cache entry.

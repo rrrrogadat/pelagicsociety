@@ -19,6 +19,7 @@ import (
 	"github.com/fhak/pelagicsociety/internal/mail"
 	"github.com/fhak/pelagicsociety/internal/media"
 	"github.com/fhak/pelagicsociety/internal/server"
+	"github.com/fhak/pelagicsociety/internal/socials"
 	"golang.org/x/term"
 )
 
@@ -84,6 +85,7 @@ func runServer() error {
 
 	contentSvc := content.New(sqlDB)
 	galleryRepo := gallery.NewRepo(sqlDB)
+	socialsRepo := socials.NewRepo(sqlDB)
 	mediaStore := media.New(context.Background(),
 		os.Getenv("MEDIA_BUCKET"),
 		os.Getenv("MEDIA_CDN_URL"),
@@ -95,6 +97,7 @@ func runServer() error {
 		Auth:          authSvc,
 		Content:       contentSvc,
 		Gallery:       galleryRepo,
+		Socials:       socialsRepo,
 		Media:         mediaStore,
 		ContactToAddr: envOr("CONTACT_TO", ""),
 	})

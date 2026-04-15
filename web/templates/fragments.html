@@ -45,6 +45,58 @@
 </div>
 {{end}}
 
+{{/* -------- link blocks (editable label + url) -------- */}}
+
+{{define "link_view"}}
+<span class="ps-link group relative inline-block" data-key="{{.Key}}">
+    <a href="{{.URL}}"{{if or (hasPrefix .URL "http://") (hasPrefix .URL "https://")}} target="_blank" rel="noopener"{{end}} class="{{.Class}}">{{.Label}}</a>
+    {{if .IsAdmin}}
+    <button type="button"
+            class="ps-edit-pencil absolute -top-2 -right-2 md:opacity-0 md:group-hover:opacity-100 focus:opacity-100 transition-all w-7 h-7 rounded-md bg-slate-900/90 border border-slate-700 hover:border-sky-400 hover:text-sky-400 text-slate-400 flex items-center justify-center backdrop-blur-sm shadow-lg z-10"
+            hx-get="/admin/link/edit?key={{.Key}}&class={{.Class}}"
+            hx-target="closest .ps-link"
+            hx-swap="outerHTML"
+            aria-label="Edit link {{.Key}}">
+        {{icon "pencil" "w-3.5 h-3.5"}}
+    </button>
+    {{end}}
+</span>
+{{end}}
+
+{{define "link_edit"}}
+<span class="ps-link inline-block rounded-lg border border-sky-500/40 bg-sky-500/5 p-3" data-key="{{.Key}}">
+    <form hx-post="/admin/link"
+          hx-target="closest .ps-link"
+          hx-swap="outerHTML"
+          class="flex flex-col gap-2 text-sm">
+        <input type="hidden" name="key" value="{{.Key}}">
+        <input type="hidden" name="class" value="{{.Class}}">
+        <label class="flex flex-col gap-1">
+            <span class="text-[10px] uppercase tracking-widest text-slate-400">Label</span>
+            <input type="text" name="label" value="{{.Label}}" autofocus
+                   class="px-2.5 py-1.5 rounded bg-slate-950 border border-slate-700 focus:outline-none focus:border-sky-400 focus:ring-1 focus:ring-sky-400 text-sm min-w-56">
+        </label>
+        <label class="flex flex-col gap-1">
+            <span class="text-[10px] uppercase tracking-widest text-slate-400">URL</span>
+            <input type="url" name="url" value="{{.URL}}" required
+                   class="px-2.5 py-1.5 rounded bg-slate-950 border border-slate-700 focus:outline-none focus:border-sky-400 focus:ring-1 focus:ring-sky-400 text-sm min-w-56">
+        </label>
+        <div class="flex items-center gap-2 text-xs">
+            <button type="submit" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold transition">
+                {{icon "check" "w-3.5 h-3.5"}} Save
+            </button>
+            <button type="button"
+                    hx-get="/link/view?key={{.Key}}&class={{.Class}}"
+                    hx-target="closest .ps-link"
+                    hx-swap="outerHTML"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded border border-slate-700 hover:border-slate-500 transition">
+                {{icon "x" "w-3.5 h-3.5"}} Cancel
+            </button>
+        </div>
+    </form>
+</span>
+{{end}}
+
 {{/* -------- gallery fragments -------- */}}
 
 {{define "gallery_grid"}}
@@ -123,6 +175,137 @@
     </form>
     <div id="caption-msg-{{.ID}}" class="px-3 pb-2 text-xs"></div>
     {{end}}
+</div>
+{{end}}
+
+{{/* -------- social cards -------- */}}
+
+{{define "social_view"}}
+<div class="ps-social group relative rounded-xl overflow-hidden border border-slate-800 bg-slate-900 hover:border-slate-600 transition" data-social-id="{{.Social.ID}}">
+    <a href="{{.Social.URL}}" target="_blank" rel="noopener" class="block">
+        <div class="relative aspect-[16/10] bg-gradient-to-br {{.Social.GradientClass}} flex items-center justify-center">
+            {{if .Social.ThumbnailURL}}
+                <img src="{{.Social.ThumbnailURL}}" alt="{{.Social.Label}} cover" loading="lazy"
+                     class="absolute inset-0 w-full h-full object-cover transition group-hover:scale-[1.02]">
+                <div class="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-950/20 to-transparent"></div>
+            {{end}}
+            <span class="relative text-white/80 drop-shadow-lg">
+                {{icon .Social.IconName "w-10 h-10"}}
+            </span>
+        </div>
+        <div class="px-5 py-4">
+            <div class="text-xs uppercase tracking-widest text-slate-400">{{.Social.Label}}</div>
+            <div class="mt-0.5 font-semibold">{{.Social.Username}}</div>
+            {{if .Social.Sublabel}}
+            <div class="mt-0.5 text-sm text-slate-400">{{.Social.Sublabel}}</div>
+            {{end}}
+        </div>
+    </a>
+    {{if .IsAdmin}}
+    <button type="button"
+            class="absolute top-2 right-2 md:opacity-0 md:group-hover:opacity-100 focus:opacity-100 transition-all w-8 h-8 rounded-md bg-slate-900/90 border border-slate-700 hover:border-sky-400 hover:text-sky-400 text-slate-300 flex items-center justify-center backdrop-blur-sm shadow-lg"
+            hx-get="/admin/social/{{.Social.ID}}/edit"
+            hx-target="closest .ps-social"
+            hx-swap="outerHTML"
+            aria-label="Edit {{.Social.Label}}">
+        {{icon "pencil" "w-4 h-4"}}
+    </button>
+    {{end}}
+</div>
+{{end}}
+
+{{define "social_edit"}}
+<div class="ps-social relative rounded-xl border border-sky-500/40 bg-sky-500/5 p-5 space-y-4" data-social-id="{{.Social.ID}}">
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2 text-xs uppercase tracking-widest text-sky-300">
+            {{icon .Social.IconName "w-4 h-4"}}
+            <span>Edit {{.Social.Platform}}</span>
+        </div>
+        <button type="button"
+                hx-get="/social/{{.Social.ID}}"
+                hx-target="closest .ps-social"
+                hx-swap="outerHTML"
+                class="text-slate-400 hover:text-slate-200 transition" aria-label="Cancel">
+            {{icon "x" "w-4 h-4"}}
+        </button>
+    </div>
+
+    {{/* Thumbnail uploader (separate form so image and text can be saved independently) */}}
+    <div class="rounded-lg border border-slate-700 bg-slate-900/60 overflow-hidden">
+        <div class="relative aspect-[16/10] bg-gradient-to-br {{.Social.GradientClass}} flex items-center justify-center">
+            {{if .Social.ThumbnailURL}}
+                <img src="{{.Social.ThumbnailURL}}" alt="" class="absolute inset-0 w-full h-full object-cover">
+                <div class="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent"></div>
+            {{end}}
+            <span class="relative text-white/80 drop-shadow-lg">{{icon .Social.IconName "w-10 h-10"}}</span>
+        </div>
+        <div class="p-3 flex items-center gap-2 text-xs">
+            <form hx-post="/admin/social/{{.Social.ID}}/thumbnail"
+                  hx-target="closest .ps-social"
+                  hx-swap="outerHTML"
+                  hx-encoding="multipart/form-data"
+                  class="flex items-center gap-2">
+                <label class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 cursor-pointer transition">
+                    {{icon "upload" "w-3.5 h-3.5"}}
+                    <span>Upload</span>
+                    <input type="file" name="thumbnail" accept="image/jpeg,image/png,image/webp" class="hidden"
+                           onchange="this.form.requestSubmit()">
+                </label>
+            </form>
+            {{if .Social.ThumbnailKey}}
+            <form hx-post="/admin/social/{{.Social.ID}}/thumbnail/clear"
+                  hx-target="closest .ps-social"
+                  hx-swap="outerHTML"
+                  hx-confirm="Remove this thumbnail?">
+                <button type="submit" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded border border-slate-700 hover:border-red-500 hover:text-red-400 transition">
+                    {{icon "trash" "w-3.5 h-3.5"}}
+                    <span>Remove</span>
+                </button>
+            </form>
+            {{end}}
+        </div>
+    </div>
+
+    {{/* Fields */}}
+    <form hx-post="/admin/social/{{.Social.ID}}"
+          hx-target="closest .ps-social"
+          hx-swap="outerHTML"
+          class="space-y-3 text-sm">
+        <div class="grid grid-cols-2 gap-3">
+            <label class="block">
+                <span class="text-xs uppercase tracking-wide text-slate-400">Label</span>
+                <input type="text" name="label" value="{{.Social.Label}}"
+                       class="mt-1 w-full px-3 py-2 rounded bg-slate-950 border border-slate-700 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500">
+            </label>
+            <label class="block">
+                <span class="text-xs uppercase tracking-wide text-slate-400">Username</span>
+                <input type="text" name="username" value="{{.Social.Username}}"
+                       class="mt-1 w-full px-3 py-2 rounded bg-slate-950 border border-slate-700 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500">
+            </label>
+        </div>
+        <label class="block">
+            <span class="text-xs uppercase tracking-wide text-slate-400">Sublabel</span>
+            <input type="text" name="sublabel" value="{{.Social.Sublabel}}"
+                   class="mt-1 w-full px-3 py-2 rounded bg-slate-950 border border-slate-700 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500">
+        </label>
+        <label class="block">
+            <span class="text-xs uppercase tracking-wide text-slate-400">URL</span>
+            <input type="url" name="url" value="{{.Social.URL}}" required
+                   class="mt-1 w-full px-3 py-2 rounded bg-slate-950 border border-slate-700 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500">
+        </label>
+        <div class="flex items-center gap-2">
+            <button type="submit" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold text-xs transition">
+                {{icon "check" "w-3.5 h-3.5"}} Save
+            </button>
+            <button type="button"
+                    hx-get="/social/{{.Social.ID}}"
+                    hx-target="closest .ps-social"
+                    hx-swap="outerHTML"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded border border-slate-700 hover:border-slate-500 text-xs transition">
+                {{icon "x" "w-3.5 h-3.5"}} Cancel
+            </button>
+        </div>
+    </form>
 </div>
 {{end}}
 

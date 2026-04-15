@@ -15,6 +15,7 @@ import (
 	"github.com/fhak/pelagicsociety/internal/icons"
 	"github.com/fhak/pelagicsociety/internal/mail"
 	"github.com/fhak/pelagicsociety/internal/media"
+	"github.com/fhak/pelagicsociety/internal/socials"
 	"github.com/fhak/pelagicsociety/web"
 )
 
@@ -24,6 +25,7 @@ type Config struct {
 	Auth          *auth.Auth
 	Content       *content.Service
 	Gallery       *gallery.Repo
+	Socials       *socials.Repo
 	Media         *media.Store
 	ContactToAddr string // where contact form submissions are delivered
 }
@@ -37,6 +39,7 @@ type Server struct {
 	auth      *auth.Auth
 	content   *content.Service
 	gallery   *gallery.Repo
+	socials   *socials.Repo
 	media     *media.Store
 	cfg       Config
 }
@@ -60,6 +63,7 @@ func New(cfg Config) (*Server, error) {
 		auth:      cfg.Auth,
 		content:   cfg.Content,
 		gallery:   cfg.Gallery,
+		socials:   cfg.Socials,
 		media:     cfg.Media,
 		cfg:       cfg,
 	}
@@ -98,6 +102,8 @@ func (s *Server) routes() {
 
 	// Public content rendering (for "Cancel" in inline editor)
 	s.mux.HandleFunc("GET /content/view", s.handleContentView)
+	s.mux.HandleFunc("GET /link/view", s.handleLinkView)
+	s.mux.HandleFunc("GET /social/{id}", s.handleSocialView)
 
 	// Admin — gated by admin role
 	adminOnly := s.auth.RequireRole(auth.RoleAdmin)
@@ -107,6 +113,14 @@ func (s *Server) routes() {
 	// Admin: content inline editing
 	s.mux.Handle("GET /admin/content/edit", adminOnly(http.HandlerFunc(s.handleContentEdit)))
 	s.mux.Handle("POST /admin/content", adminOnly(http.HandlerFunc(s.handleContentSave)))
+	s.mux.Handle("GET /admin/link/edit", adminOnly(http.HandlerFunc(s.handleLinkEdit)))
+	s.mux.Handle("POST /admin/link", adminOnly(http.HandlerFunc(s.handleLinkSave)))
+
+	// Admin: social links
+	s.mux.Handle("GET /admin/social/{id}/edit", adminOnly(http.HandlerFunc(s.handleSocialEdit)))
+	s.mux.Handle("POST /admin/social/{id}", adminOnly(http.HandlerFunc(s.handleSocialSave)))
+	s.mux.Handle("POST /admin/social/{id}/thumbnail", adminOnly(http.HandlerFunc(s.handleSocialThumbnail)))
+	s.mux.Handle("POST /admin/social/{id}/thumbnail/clear", adminOnly(http.HandlerFunc(s.handleSocialThumbnailClear)))
 
 	// Admin: gallery
 	s.mux.Handle("POST /admin/gallery/upload", adminOnly(http.HandlerFunc(s.handleGalleryUpload)))
@@ -173,7 +187,8 @@ func (s *Server) renderFragment(w http.ResponseWriter, name string, data any) {
 // tplFuncs builds the template FuncMap shared across every template set.
 func tplFuncs() template.FuncMap {
 	return template.FuncMap{
-		"icon": icons.Render,
+		"icon":      icons.Render,
+		"hasPrefix": strings.HasPrefix,
 	}
 }
 

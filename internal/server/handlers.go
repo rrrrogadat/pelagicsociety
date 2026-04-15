@@ -13,6 +13,7 @@ import (
 	"github.com/fhak/pelagicsociety/internal/auth"
 	"github.com/fhak/pelagicsociety/internal/content"
 	mailer "github.com/fhak/pelagicsociety/internal/mail"
+	"github.com/fhak/pelagicsociety/internal/socials"
 )
 
 type pageData struct {
@@ -20,23 +21,85 @@ type pageData struct {
 	Description string
 	Path        string
 	User        *auth.User
+	Socials     []socials.Social
+	Copyright   *content.BlockView // rendered in the shared footer
 }
 
 // pageFor builds the base page data for a request, pulling the current user
-// from the session cookie if present. Used by handlers so nav etc. can render
-// auth state on public pages.
+// from the session cookie if present and loading social links + footer
+// content so the shared partials can render without handler plumbing.
 func (s *Server) pageFor(r *http.Request, title, path string) pageData {
-	return pageData{
-		Title: title,
-		Path:  path,
-		User:  s.auth.UserFromRequest(r),
+	u := s.auth.UserFromRequest(r)
+	list, _ := s.socials.List(r.Context())
+	for i := range list {
+		if list[i].ThumbnailKey != "" {
+			list[i].ThumbnailURL = s.media.URL(list[i].ThumbnailKey)
+		}
 	}
+	return pageData{
+		Title:     title,
+		Path:      path,
+		User:      u,
+		Socials:   list,
+		Copyright: s.blockView(r.Context(), "footer.copyright", "© 2026 Pelagic Society", "text-slate-400", u),
+	}
+}
+
+// socialView enriches a single Social with the IsAdmin flag and thumbnail URL
+// so fragment templates can render without threading extra context.
+type socialView struct {
+	Social  socials.Social
+	IsAdmin bool
+}
+
+func (s *Server) socialViewByID(ctx context.Context, id int64, u *auth.User) (*socialView, error) {
+	sc, err := s.socials.Get(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if sc.ThumbnailKey != "" {
+		sc.ThumbnailURL = s.media.URL(sc.ThumbnailKey)
+	}
+	return &socialView{Social: *sc, IsAdmin: u.IsAdmin()}, nil
 }
 
 func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
 	p := s.pageFor(r, "Pelagic Society", "/")
 	p.Description = "Spearfishing, freediving, and open water adventures."
-	s.render(w, "home.html", p)
+
+	socialViews := make([]*socialView, 0, len(p.Socials))
+	for i := range p.Socials {
+		socialViews = append(socialViews, &socialView{Social: p.Socials[i], IsAdmin: p.User.IsAdmin()})
+	}
+
+	ctx := r.Context()
+	ctaPrimaryClass := "inline-flex items-center justify-center px-6 py-3 rounded bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold transition"
+
+	s.render(w, "home.html", homePageData{
+		pageData:        p,
+		HeroTagline:     s.blockView(ctx, "hero.tagline", "Spearfishing · Freediving · Open Water", "uppercase tracking-[0.3em] text-sky-400 text-sm", p.User),
+		HeroHeading:     s.blockView(ctx, "hero.heading", "Life beyond the shoreline.", "text-5xl md:text-7xl font-bold tracking-tight max-w-3xl", p.User),
+		HeroBody:        s.blockView(ctx, "hero.body", "Chasing pelagic fish and telling the stories of the open ocean. New videos every week.", "mt-6 text-lg text-slate-300 max-w-xl", p.User),
+		HeroCTAPrimary:  s.linkView(ctx, "hero.cta_primary", "Watch on YouTube", "https://www.youtube.com/@pelagicsociety", ctaPrimaryClass, p.User),
+		HeroCTASecond:   s.blockView(ctx, "hero.cta_secondary", "Business Inquiries", "inline-block", p.User),
+		SocialsHeading:  s.blockView(ctx, "home.socials_heading", "Follow along", "text-3xl font-bold", p.User),
+		MerchHeading:    s.blockView(ctx, "merch.heading", "Merch is coming.", "text-3xl font-bold", p.User),
+		MerchBody:       s.blockView(ctx, "merch.body", "Pelagic Society drops are limited. Get on the list for first access.", "mt-3 text-slate-300 max-w-xl", p.User),
+		SocialViews:     socialViews,
+	})
+}
+
+type homePageData struct {
+	pageData
+	HeroTagline    *content.BlockView
+	HeroHeading    *content.BlockView
+	HeroBody       *content.BlockView
+	HeroCTAPrimary *content.LinkBlockView
+	HeroCTASecond  *content.BlockView
+	SocialsHeading *content.BlockView
+	MerchHeading   *content.BlockView
+	MerchBody      *content.BlockView
+	SocialViews    []*socialView
 }
 
 func (s *Server) handleAbout(w http.ResponseWriter, r *http.Request) {
@@ -119,12 +182,43 @@ func (s *Server) blockView(ctx context.Context, key, fallback, class string, u *
 	}
 }
 
+func (s *Server) linkView(ctx context.Context, key, fallbackLabel, fallbackURL, class string, u *auth.User) *content.LinkBlockView {
+	lv := s.content.Link(ctx, key, fallbackLabel, fallbackURL)
+	lv.Class = class
+	lv.IsAdmin = u.IsAdmin()
+	return &lv
+}
+
 func (s *Server) handleShop(w http.ResponseWriter, r *http.Request) {
-	s.render(w, "shop.html", s.pageFor(r, "Shop — Pelagic Society", "/shop"))
+	p := s.pageFor(r, "Shop — Pelagic Society", "/shop")
+	s.render(w, "shop.html", shopPageData{
+		pageData: p,
+		Tagline:  s.blockView(r.Context(), "shop.tagline", "Shop", "uppercase tracking-[0.3em] text-sky-400 text-sm", p.User),
+		Heading:  s.blockView(r.Context(), "shop.heading", "Coming soon.", "mt-4 text-5xl md:text-6xl font-bold tracking-tight", p.User),
+		Body:     s.blockView(r.Context(), "shop.body", "Apparel and gear, built for the water. Limited drops only.", "mt-6 text-lg text-slate-300", p.User),
+	})
 }
 
 func (s *Server) handleContact(w http.ResponseWriter, r *http.Request) {
-	s.render(w, "contact.html", s.pageFor(r, "Contact — Pelagic Society", "/contact"))
+	p := s.pageFor(r, "Contact — Pelagic Society", "/contact")
+	s.render(w, "contact.html", contactPageData{
+		pageData: p,
+		Heading:  s.blockView(r.Context(), "contact.heading", "Contact", "text-5xl font-bold tracking-tight", p.User),
+		Intro:    s.blockView(r.Context(), "contact.intro", "Sponsorships, collaborations, press, or just saying hi.", "mt-4 text-slate-400", p.User),
+	})
+}
+
+type shopPageData struct {
+	pageData
+	Tagline *content.BlockView
+	Heading *content.BlockView
+	Body    *content.BlockView
+}
+
+type contactPageData struct {
+	pageData
+	Heading *content.BlockView
+	Intro   *content.BlockView
 }
 
 func validateEmail(s string) (string, error) {

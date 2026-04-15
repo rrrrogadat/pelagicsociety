@@ -83,20 +83,15 @@
 
 {{define "footer"}}
 <footer class="border-t border-slate-800/60 mt-16">
-    <div class="max-w-6xl mx-auto px-6 py-10 flex flex-col md:flex-row gap-6 items-center justify-between text-sm text-slate-400">
-        <p>&copy; 2026 Pelagic Society</p>
+    <div class="max-w-6xl mx-auto px-6 py-10 flex flex-col md:flex-row gap-6 items-center justify-between text-sm">
+        {{template "block_view" .Copyright}}
         <div class="flex gap-3">
-            <a href="https://www.youtube.com/@pelagicsociety" target="_blank" rel="noopener" aria-label="YouTube"
-               class="p-2 rounded-full hover:bg-slate-800 hover:text-sky-400 transition">{{icon "youtube" "w-5 h-5"}}</a>
-            <a href="https://www.instagram.com/pelagicsociety" target="_blank" rel="noopener" aria-label="Instagram"
-               class="p-2 rounded-full hover:bg-slate-800 hover:text-sky-400 transition">{{icon "instagram" "w-5 h-5"}}</a>
-            <a href="https://www.tiktok.com/@pelagicsociety" target="_blank" rel="noopener" aria-label="TikTok"
+            {{range .Socials}}
+            <a href="{{.URL}}" target="_blank" rel="noopener" aria-label="{{.Label}}"
                class="p-2 rounded-full hover:bg-slate-800 hover:text-sky-400 transition">
-                {{/* TikTok — lucide doesn't ship one, use a minimal inline path */}}
-                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"/>
-                </svg>
+                {{icon .IconName "w-5 h-5"}}
             </a>
+            {{end}}
         </div>
     </div>
 </footer>
