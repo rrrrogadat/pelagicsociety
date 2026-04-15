@@ -6,9 +6,6 @@
             <h1 class="mt-2 text-3xl font-bold tracking-tight">Dashboard</h1>
             <p class="mt-1 text-sm text-slate-400">Signed in as {{.User.Email}}</p>
         </div>
-        <form hx-post="/logout" hx-swap="none">
-            <button type="submit" class="px-4 py-2 rounded border border-slate-700 hover:border-sky-400 text-sm">Sign out</button>
-        </form>
     </div>
 
     <div class="mt-10 grid grid-cols-2 gap-4 max-w-md">

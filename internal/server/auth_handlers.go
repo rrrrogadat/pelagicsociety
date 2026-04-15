@@ -24,7 +24,7 @@ func (s *Server) handleLoginPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.render(w, "login.html", loginPageData{
-		pageData: pageData{Title: "Login — Pelagic Society", Path: "/login"},
+		pageData: s.pageFor(r, "Login — Pelagic Society", "/login"),
 		Next:     safeNext(r.URL.Query().Get("next")),
 	})
 }

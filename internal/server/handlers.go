@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fhak/pelagicsociety/internal/auth"
 	mailer "github.com/fhak/pelagicsociety/internal/mail"
 )
 
@@ -17,30 +18,40 @@ type pageData struct {
 	Title       string
 	Description string
 	Path        string
+	User        *auth.User
+}
+
+// pageFor builds the base page data for a request, pulling the current user
+// from the session cookie if present. Used by handlers so nav etc. can render
+// auth state on public pages.
+func (s *Server) pageFor(r *http.Request, title, path string) pageData {
+	return pageData{
+		Title: title,
+		Path:  path,
+		User:  s.auth.UserFromRequest(r),
+	}
 }
 
 func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
-	s.render(w, "home.html", pageData{
-		Title:       "Pelagic Society",
-		Description: "Spearfishing, freediving, and open water adventures.",
-		Path:        "/",
-	})
+	p := s.pageFor(r, "Pelagic Society", "/")
+	p.Description = "Spearfishing, freediving, and open water adventures."
+	s.render(w, "home.html", p)
 }
 
 func (s *Server) handleAbout(w http.ResponseWriter, r *http.Request) {
-	s.render(w, "about.html", pageData{Title: "About — Pelagic Society", Path: "/about"})
+	s.render(w, "about.html", s.pageFor(r, "About — Pelagic Society", "/about"))
 }
 
 func (s *Server) handleGallery(w http.ResponseWriter, r *http.Request) {
-	s.render(w, "gallery.html", pageData{Title: "Gallery — Pelagic Society", Path: "/gallery"})
+	s.render(w, "gallery.html", s.pageFor(r, "Gallery — Pelagic Society", "/gallery"))
 }
 
 func (s *Server) handleShop(w http.ResponseWriter, r *http.Request) {
-	s.render(w, "shop.html", pageData{Title: "Shop — Pelagic Society", Path: "/shop"})
+	s.render(w, "shop.html", s.pageFor(r, "Shop — Pelagic Society", "/shop"))
 }
 
 func (s *Server) handleContact(w http.ResponseWriter, r *http.Request) {
-	s.render(w, "contact.html", pageData{Title: "Contact — Pelagic Society", Path: "/contact"})
+	s.render(w, "contact.html", s.pageFor(r, "Contact — Pelagic Society", "/contact"))
 }
 
 func validateEmail(s string) (string, error) {

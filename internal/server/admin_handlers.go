@@ -4,17 +4,14 @@ import (
 	"context"
 	"net/http"
 	"time"
-
-	"github.com/fhak/pelagicsociety/internal/auth"
 )
 
 type adminHomeData struct {
 	pageData
-	User            *auth.User
-	WaitlistCount   int
-	ContactCount    int
-	RecentContacts  []contactRow
-	RecentWaitlist  []waitlistRow
+	WaitlistCount  int
+	ContactCount   int
+	RecentContacts []contactRow
+	RecentWaitlist []waitlistRow
 }
 
 type contactRow struct {
@@ -33,14 +30,11 @@ type waitlistRow struct {
 }
 
 func (s *Server) handleAdminHome(w http.ResponseWriter, r *http.Request) {
-	u := auth.UserFrom(r.Context())
-
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
 	data := adminHomeData{
-		pageData: pageData{Title: "Admin — Pelagic Society", Path: "/admin"},
-		User:     u,
+		pageData: s.pageFor(r, "Admin — Pelagic Society", "/admin"),
 	}
 
 	_ = s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM waitlist`).Scan(&data.WaitlistCount)

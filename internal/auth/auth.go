@@ -36,10 +36,42 @@ var (
 type User struct {
 	ID          int64
 	Email       string
+	Name        string
 	Role        string
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	LastLoginAt *time.Time
+}
+
+// DisplayName returns Name if set, otherwise the local-part of the email.
+func (u *User) DisplayName() string {
+	if u == nil {
+		return ""
+	}
+	if u.Name != "" {
+		return u.Name
+	}
+	if i := strings.Index(u.Email, "@"); i > 0 {
+		return u.Email[:i]
+	}
+	return u.Email
+}
+
+// Initial returns a single uppercase letter for avatar display.
+func (u *User) Initial() string {
+	if u == nil {
+		return ""
+	}
+	d := u.DisplayName()
+	if d == "" {
+		return "?"
+	}
+	return strings.ToUpper(d[:1])
+}
+
+// IsAdmin reports whether the user exists and has the admin role.
+func (u *User) IsAdmin() bool {
+	return u != nil && u.Role == RoleAdmin
 }
 
 type Claims struct {
@@ -109,7 +141,7 @@ func (a *Auth) SetPassword(ctx context.Context, userID int64, password string) e
 
 func (a *Auth) GetUserByID(ctx context.Context, id int64) (*User, error) {
 	row := a.db.QueryRowContext(ctx,
-		`SELECT id, email, role, created_at, updated_at, last_login_at FROM users WHERE id = ?`,
+		`SELECT id, email, name, role, created_at, updated_at, last_login_at FROM users WHERE id = ?`,
 		id,
 	)
 	return scanUser(row)
@@ -120,9 +152,9 @@ func (a *Auth) getUserWithHash(ctx context.Context, email string) (*User, string
 	var hash string
 	var lastLogin sql.NullTime
 	err := a.db.QueryRowContext(ctx,
-		`SELECT id, email, role, created_at, updated_at, last_login_at, password_hash FROM users WHERE email = ?`,
+		`SELECT id, email, name, role, created_at, updated_at, last_login_at, password_hash FROM users WHERE email = ?`,
 		normalizeEmail(email),
-	).Scan(&u.ID, &u.Email, &u.Role, &u.CreatedAt, &u.UpdatedAt, &lastLogin, &hash)
+	).Scan(&u.ID, &u.Email, &u.Name, &u.Role, &u.CreatedAt, &u.UpdatedAt, &lastLogin, &hash)
 	if err != nil {
 		return nil, "", err
 	}
@@ -130,6 +162,42 @@ func (a *Auth) getUserWithHash(ctx context.Context, email string) (*User, string
 		u.LastLoginAt = &lastLogin.Time
 	}
 	return &u, hash, nil
+}
+
+// UpdateProfile updates mutable profile fields. Email is normalized.
+func (a *Auth) UpdateName(ctx context.Context, userID int64, name string) error {
+	_, err := a.db.ExecContext(ctx,
+		`UPDATE users SET name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+		strings.TrimSpace(name), userID,
+	)
+	return err
+}
+
+// UpdateEmail requires the caller to have already verified the user's password.
+func (a *Auth) UpdateEmail(ctx context.Context, userID int64, email string) error {
+	_, err := a.db.ExecContext(ctx,
+		`UPDATE users SET email = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+		normalizeEmail(email), userID,
+	)
+	if isUniqueViolation(err) {
+		return ErrUserExists
+	}
+	return err
+}
+
+// VerifyPassword checks a password for a known user ID. Useful when the user
+// is already authenticated (session cookie) but a sensitive operation needs a
+// fresh password check.
+func (a *Auth) VerifyPassword(ctx context.Context, userID int64, password string) error {
+	var hash string
+	err := a.db.QueryRowContext(ctx, `SELECT password_hash FROM users WHERE id = ?`, userID).Scan(&hash)
+	if err != nil {
+		return ErrInvalidCredentials
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)); err != nil {
+		return ErrInvalidCredentials
+	}
+	return nil
 }
 
 // Authenticate checks credentials and returns the user on success. Constant-
@@ -235,6 +303,22 @@ func (a *Auth) WithOptionalUser(next http.Handler) http.Handler {
 	})
 }
 
+// RequireAuth gates a handler to any authenticated user. Redirects anons to
+// /login with a next= query param.
+func (a *Auth) RequireAuth() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			u := a.UserFromRequest(r)
+			if u == nil {
+				http.Redirect(w, r, "/login?next="+r.URL.Path, http.StatusSeeOther)
+				return
+			}
+			r = r.WithContext(context.WithValue(r.Context(), userCtxKey, u))
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
 // RequireRole gates a handler to a given role. Redirects unauthenticated
 // users to /login, rejects authenticated users with the wrong role as 403.
 func (a *Auth) RequireRole(role string) func(http.Handler) http.Handler {
@@ -293,7 +377,7 @@ func normalizeEmail(e string) string { return strings.ToLower(strings.TrimSpace(
 func scanUser(row *sql.Row) (*User, error) {
 	var u User
 	var lastLogin sql.NullTime
-	err := row.Scan(&u.ID, &u.Email, &u.Role, &u.CreatedAt, &u.UpdatedAt, &lastLogin)
+	err := row.Scan(&u.ID, &u.Email, &u.Name, &u.Role, &u.CreatedAt, &u.UpdatedAt, &lastLogin)
 	if err != nil {
 		return nil, err
 	}

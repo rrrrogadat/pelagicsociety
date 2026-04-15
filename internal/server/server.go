@@ -70,10 +70,17 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST /login", s.handleLogin)
 	s.mux.HandleFunc("POST /logout", s.handleLogout)
 
+	// Account — any authenticated user (admin or user)
+	authed := s.auth.RequireAuth()
+	s.mux.Handle("GET /account", authed(http.HandlerFunc(s.handleAccountPage)))
+	s.mux.Handle("POST /account/name", authed(http.HandlerFunc(s.handleAccountName)))
+	s.mux.Handle("POST /account/email", authed(http.HandlerFunc(s.handleAccountEmail)))
+	s.mux.Handle("POST /account/password", authed(http.HandlerFunc(s.handleAccountPassword)))
+
 	// Admin — gated by admin role
 	adminOnly := s.auth.RequireRole(auth.RoleAdmin)
 	s.mux.Handle("GET /admin", adminOnly(http.HandlerFunc(s.handleAdminHome)))
-	s.mux.Handle("GET /admin/", adminOnly(http.HandlerFunc(s.handleAdminHome)))
+	s.mux.Handle("GET /admin/settings", adminOnly(http.HandlerFunc(s.handleAdminSettings)))
 
 	s.mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("ok"))

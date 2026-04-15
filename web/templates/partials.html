@@ -1,6 +1,6 @@
 {{define "nav"}}
-<header x-data="{ open: false }" class="border-b border-slate-800/60 bg-slate-950/80 backdrop-blur sticky top-0 z-50">
-    <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+<header x-data="{ mobile: false }" class="border-b border-slate-800/60 bg-slate-950/80 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
         <a href="/" class="font-bold tracking-widest text-lg uppercase">Pelagic Society</a>
         <nav class="hidden md:flex gap-8 text-sm uppercase tracking-wide">
             <a href="/about" class="hover:text-sky-400 transition">About</a>
@@ -8,11 +8,16 @@
             <a href="/shop" class="hover:text-sky-400 transition">Shop</a>
             <a href="/contact" class="hover:text-sky-400 transition">Contact</a>
         </nav>
-        <button @click="open = !open" class="md:hidden" aria-label="Menu">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
-        </button>
+
+        <div class="flex items-center gap-3">
+            {{template "avatar_menu" .}}
+
+            <button @click="mobile = !mobile" class="md:hidden" aria-label="Menu">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+            </button>
+        </div>
     </div>
-    <div x-show="open" x-cloak class="md:hidden border-t border-slate-800/60">
+    <div x-show="mobile" x-cloak class="md:hidden border-t border-slate-800/60">
         <nav class="flex flex-col px-6 py-4 gap-3 text-sm uppercase tracking-wide">
             <a href="/about">About</a>
             <a href="/gallery">Gallery</a>
@@ -21,6 +26,41 @@
         </nav>
     </div>
 </header>
+{{end}}
+
+{{define "avatar_menu"}}
+<div x-data="{ open: false }" @keydown.escape.window="open = false" @click.outside="open = false" class="relative">
+    <button @click="open = !open" aria-label="Account menu"
+            class="w-9 h-9 rounded-full flex items-center justify-center border border-slate-700 hover:border-sky-400 transition text-sm font-semibold
+                   {{if .User}}bg-sky-500/20 text-sky-300{{else}}bg-slate-900 text-slate-400{{end}}">
+        {{if .User}}
+            {{.User.Initial}}
+        {{else}}
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/>
+            </svg>
+        {{end}}
+    </button>
+
+    <div x-show="open" x-cloak x-transition.opacity.duration.100ms
+         class="absolute right-0 mt-2 w-56 rounded-lg bg-slate-900 border border-slate-800 shadow-xl overflow-hidden text-sm">
+        {{if .User}}
+            <div class="px-4 py-3 border-b border-slate-800">
+                <div class="font-medium truncate">{{.User.DisplayName}}</div>
+                <div class="text-xs text-slate-400 truncate">{{.User.Email}}</div>
+            </div>
+            <a href="/account" class="block px-4 py-2 hover:bg-slate-800">Account</a>
+            {{if .User.IsAdmin}}
+                <a href="/admin" class="block px-4 py-2 hover:bg-slate-800">Admin Settings</a>
+            {{end}}
+            <form hx-post="/logout" hx-swap="none" class="border-t border-slate-800">
+                <button type="submit" class="w-full text-left px-4 py-2 hover:bg-slate-800 text-slate-400">Sign out</button>
+            </form>
+        {{else}}
+            <a href="/login" class="block px-4 py-3 hover:bg-slate-800 font-medium text-sky-300">Login</a>
+        {{end}}
+    </div>
+</div>
 {{end}}
 
 {{define "footer"}}
